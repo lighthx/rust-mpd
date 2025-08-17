@@ -31,7 +31,8 @@ use std::net::{TcpStream, ToSocketAddrs};
 /// Client connection
 #[derive(Debug)]
 pub struct Client<S = TcpStream>
-where S: Read + Write
+where
+    S: Read + Write,
 {
     socket: BufStream<S>,
     /// MPD protocol version
@@ -395,7 +396,9 @@ impl<S: Read + Write> Client<S> {
 
     /// Find songs matching Query conditions.
     pub fn find<W>(&mut self, query: &Query, window: W) -> Result<Vec<Song>>
-    where W: Into<Window> {
+    where
+        W: Into<Window>,
+    {
         self.find_generic("find", query, window.into())
     }
 
@@ -424,7 +427,9 @@ impl<S: Read + Write> Client<S> {
 
     /// Case-insensitively search for songs matching Query conditions.
     pub fn search<W>(&mut self, query: &Query, window: W) -> Result<Vec<Song>>
-    where W: Into<Window> {
+    where
+        W: Into<Window>,
+    {
         self.find_generic("search", query, window.into())
     }
 
@@ -667,8 +672,7 @@ impl<S: Read + Write> Proto for Client<S> {
         if buf.ends_with(&[b'\n']) {
             buf.pop();
         }
-        let str = String::from_utf8(buf)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "stream did not contain valid UTF-8"))?;
+        let str = String::from_utf8(buf).unwrap_or_else(|_| String::new());
         Ok(str)
     }
 
@@ -685,7 +689,9 @@ impl<S: Read + Write> Proto for Client<S> {
     }
 
     fn run_command<I>(&mut self, command: &str, arguments: I) -> Result<()>
-    where I: ToArguments {
+    where
+        I: ToArguments,
+    {
         self.socket
             .write_all(command.as_bytes())
             .and_then(|_| arguments.to_arguments(&mut |arg| write!(self.socket, " {}", Quoted(arg))))
