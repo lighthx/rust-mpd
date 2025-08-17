@@ -23,8 +23,38 @@ use crate::version::Version;
 
 use std::collections::HashMap;
 use std::convert::From;
-use std::io::{BufRead, Lines, Read, Write};
+use std::io::{BufRead, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
+
+// Custom UTF-8 tolerant lines iterator
+struct LossyLines<'a, S: Read + Write> {
+    socket: &'a mut BufStream<S>,
+}
+
+impl<'a, S: Read + Write> LossyLines<'a, S> {
+    fn new(socket: &'a mut BufStream<S>) -> Self {
+        LossyLines { socket }
+    }
+}
+
+impl<'a, S: Read + Write> Iterator for LossyLines<'a, S> {
+    type Item = std::io::Result<String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut buf = Vec::new();
+        match self.socket.read_until(b'\n', &mut buf) {
+            Ok(0) => None, // EOF
+            Ok(_) => {
+                if buf.ends_with(&[b'\n']) {
+                    buf.pop();
+                }
+                // Use lossy conversion to handle non-UTF8
+                Some(Ok(String::from_utf8_lossy(&buf).into_owned()))
+            }
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
 
 // Client {{{
 
@@ -676,8 +706,8 @@ impl<S: Read + Write> Proto for Client<S> {
         Ok(str)
     }
 
-    fn read_pairs(&mut self) -> Pairs<Lines<&mut BufStream<S>>> {
-        Pairs((&mut self.socket).lines())
+    fn read_pairs(&mut self) -> Pairs<Box<dyn Iterator<Item = std::io::Result<String>> + '_>> {
+        Pairs(Box::new(LossyLines::new(&mut self.socket)))
     }
 
     fn read_pair(&mut self) -> Result<(String, String)> {

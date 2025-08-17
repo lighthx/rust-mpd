@@ -1,14 +1,12 @@
 // Hidden internal interface
 #![allow(missing_docs)]
 
-use bufstream::BufStream;
-
 use crate::convert::FromIter;
 use crate::error::{Error, ParseError, ProtoError, Result};
 use crate::reply::Reply;
 
 use std::fmt;
-use std::io::{self, Lines, Read, Write};
+use std::io::{self, Read, Write};
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
@@ -98,7 +96,7 @@ pub trait Proto {
 
     fn read_bytes(&mut self, bytes: usize) -> Result<Vec<u8>>;
     fn read_line(&mut self) -> Result<String>;
-    fn read_pairs(&mut self) -> Pairs<Lines<&mut BufStream<Self::Stream>>>;
+    fn read_pairs(&mut self) -> Pairs<Box<dyn Iterator<Item = io::Result<String>> + '_>>;
 
     fn run_command<I>(&mut self, command: &str, arguments: I) -> Result<()>
     where I: ToArguments;
