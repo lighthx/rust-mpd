@@ -672,7 +672,7 @@ impl<S: Read + Write> Proto for Client<S> {
         if buf.ends_with(&[b'\n']) {
             buf.pop();
         }
-        let str = String::from_utf8(buf).unwrap_or_else(|_| String::new());
+        let str = String::from_utf8_lossy(&buf).into_owned();
         Ok(str)
     }
 
